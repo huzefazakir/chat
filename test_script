@@ -1,0 +1,44 @@
+#!/bin/bash
+
+if [[ $1 == "serve" ]]; then
+  ./server $@
+elif [[ $1 == "connect" ]]; then
+  cmd="./client $@"
+
+  POSITIONAL=()
+  while [[ $# -gt 0 ]]
+  do
+  key="$1"
+
+  case $key in
+    --handle)
+    handle="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    --default)
+    DEFAULT=YES
+    shift # past argument
+    ;;
+    *)    # unknown option
+    POSITIONAL+=("$1") # save it in an array for later
+    shift # past argument
+    ;;
+    esac
+    done
+    set -- "${POSITIONAL[@]}" # restore positional parameters
+
+    if [[ !  -z  $handle  ]]; then
+      tmux new -s $handle -d
+      tmux rename-window -t $handle input
+      tmux send-keys -t $handle "$cmd" C-m
+      sleep .5
+      tmux split-window -v -t $handle
+      tmux send-keys -t $handle "tail -f $handle" C-m
+      tmux attach -t $handle
+    else
+      ./client $@
+    fi
+else
+  echo "Unknown command $1"
+fi
