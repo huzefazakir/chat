@@ -333,7 +333,7 @@ int main(int argc, char *argv[])
       else
       {
         printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs (address.sin_port));
-        char *msg = "chat server v1.0 \r\n";
+        char *msg = "Welcome\r\n";
 
         if(send(new_socket, msg, strlen(msg), 0) != strlen(msg))
           perror("unable to send greeting message");
@@ -391,9 +391,13 @@ int main(int argc, char *argv[])
               memset(msg, 0, sizeof(msg));
 
               int content = 0;
-              for(uint32_t idx = 0; idx < strlen(buffer); i++)
+              for(uint32_t idx = 0; idx < strlen(buffer); idx++)
               {
-                if(buffer[i] != ':') content++;
+                if(buffer[idx] != ':') 
+                {
+                  content++;
+                  //printf("buffer[%u]: %c\n", idx, buffer[idx]);
+                }
                 else break;
               }
 

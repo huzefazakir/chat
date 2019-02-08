@@ -137,10 +137,9 @@ static void parse_args(int argc, char *argv[])
     {
       case 0 : if (long_options[option_index].flag != 0)
                  break;
-               printf ("option %s", long_options[option_index].name);
+               fprintf (stderr, "option %s\n", long_options[option_index].name);
                if (optarg)
-                 printf (" with arg %s", optarg);
-               printf ("\n");
+                 printf (" with arg %s\n", optarg);
                break;
 
       case 'h': print_help(argv);
@@ -154,7 +153,12 @@ static void parse_args(int argc, char *argv[])
                 port_flag = TRUE;
                 break;
 
-      case 'u': strncpy(username, optarg, sizeof(username));
+      case 'u': if(strlen(optarg) >= 20)
+                {
+                  fprintf(stderr, "username should be less than 20 bytes\n");
+                  print_help(argv);
+                }
+                strncpy(username, optarg, sizeof(username));
                 user_flag = TRUE;
                 break;
       case 'c': break;
@@ -252,13 +256,6 @@ int main(int argc, char *argv[])
 
   freeaddrinfo(servinfo);
 
-
-  /* Set nonblock for stdin. */
-  int flag = fcntl(STDIN_FILENO, F_GETFL, 0);
-  flag |= O_NONBLOCK;
-  fcntl(STDIN_FILENO, F_SETFL, flag);
-
-
   fd_set read_fds;
   fd_set except_fds;
 
@@ -286,73 +283,37 @@ int main(int argc, char *argv[])
     if (FD_ISSET(STDIN_FILENO, &read_fds)) 
     {
       // read message from sttdin and send to the server
-      char read_buffer[MAX_BUFFER];
-      memset(read_buffer, 0, MAX_BUFFER);
+      char read_buffer[MAX_BUFFER + 1];
+      memset(read_buffer, 0, MAX_BUFFER + 1);
 
-      ssize_t read_count = 0;
-      ssize_t total_read = 0;
+      int read_count = 0;
+      read_count = read(STDIN_FILENO, read_buffer, MAX_BUFFER);
 
-      do 
+      if (read_count <= 0)
       {
-        read_count = read(STDIN_FILENO, read_buffer, MAX_BUFFER);
-
-        if (read_count < 0 && errno != EAGAIN && errno != EWOULDBLOCK) 
-        {
-          perror("unable to read");
-          return -1;
-        }
-
-        else if (read_count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) 
-          break;
-
-        else if (read_count > 0) 
-        {
-          total_read += read_count;
-
-          if (total_read > MAX_BUFFER) 
-          {
-            fprintf(stderr,"Message too large to send\n");
-            fflush(STDIN_FILENO);
-            break;
-          }
-        }
-      } while (read_count > 0 && total_read < MAX_BUFFER);
-
-      if(total_read < MAX_BUFFER && total_read > 0)
-      {
-        size_t len = strlen(read_buffer);
-        //fprintf(stderr, "len: %lu\n", len);
-        /*if (len > 0 && read_buffer[len - 1] == '\n')
-        {
-          read_buffer[len - 1] = '\0';
-        }*/
-
-        read_buffer[len - 1] = '\0';
-
-        //printf("read_buffer: %s\n", read_buffer);
-
-        char msg[MAX_BUFFER + MAX_USER_SIZE + 2];
-        memset(msg, 0, (MAX_BUFFER + MAX_USER_SIZE + 2));
-
-        strncpy(msg, username, strlen(username));
-        strcat(msg,": ");
-        strcat(msg, read_buffer);
-
-        //printf("message: %s\n", msg);
-
-        //fprintf(stderr,"Read from stdin %zu bytes. sending to server\n", strlen(read_buffer));
-        if (send(client_socket, msg, strlen(msg) , 0) != strlen(msg))
-        {
-          perror("Unable to send message to server\n");
-          shut_down(FAILURE);
-        }
-      }
-      else
-      {
-        fprintf(stderr,"message length: %u > 256 bytes, discarding\n", total_read);
-        fflush(STDIN_FILENO);
+        perror("Unable to read stdin");
+        shut_down(FAILURE);
       }
 
+      read_buffer[read_count] = '\0';
+
+      //printf("read_count: %d\n", read_count);
+
+      char msg[MAX_BUFFER + MAX_USER_SIZE + 3];
+      memset(msg, 0, (MAX_BUFFER + MAX_USER_SIZE + 3));
+
+      strncpy(msg, username, strlen(username));
+      strcat(msg,": ");
+      strcat(msg, read_buffer);
+
+      //printf("msg len:%lu\n", strlen(msg));
+
+
+      if (send(client_socket, msg, strlen(msg) , 0) != strlen(msg))
+      {
+        perror("Unable to send message to server\n");
+        shut_down(FAILURE);
+      }
     }
 
     if (FD_ISSET(STDIN_FILENO, &except_fds)) 
@@ -366,7 +327,7 @@ int main(int argc, char *argv[])
      
       char read_buffer[MAX_BUFFER + MAX_USER_SIZE + 2];
       memset(read_buffer, 0, MAX_BUFFER + MAX_USER_SIZE + 2);
-      int valread = recv(client_socket, read_buffer, MAX_BUFFER, 0);
+      int valread = recv(client_socket, read_buffer, MAX_BUFFER + MAX_USER_SIZE + 2, 0);
 
       if (valread == -1)
       {
@@ -382,6 +343,7 @@ int main(int argc, char *argv[])
 
       else
       {
+        //fprintf(fp,"%.*s\n", valread, read_buffer);
         fprintf(fp,"%s\n", read_buffer);
         fflush(fp);
       }
