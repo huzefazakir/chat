@@ -1,4 +1,5 @@
 CC = gcc
+#CC =arm-linux-gnueabihf-gcc
 CFLAGS = -Wall -g
 
 all: client server
