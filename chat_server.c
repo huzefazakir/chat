@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
         client_socket[i] = -1;
       }
 			
-      printf("checking for activity on any client sockets\n");
+      //printf("checking for activity on any client sockets\n");
 
 			if (FD_ISSET(client_socket[i], &read_fds)) 
 			{ 
