@@ -154,7 +154,7 @@ static void set_fd_sets(fd_set *read_fds, fd_set *except_fds)
   for (uint32_t i = 0; i < MAX_CLIENTS; i++)
   {
     //if valid socket descriptor then add to read list
-    if(client_socket[i] > -2)
+    if(client_socket[i] > -1)
     {
       FD_SET(client_socket[i], read_fds);
       FD_SET(client_socket[i], except_fds);
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
 	
 		//wait for an activity on one of the sockets , timeout is NULL , 
 		//so wait indefinitely
-		int activity = select(max_sd + 1, &read_fds, NULL, &except_fds, NULL);
+	int activity = select(max_sd + 1, &read_fds, NULL, &except_fds, NULL);
 
 	  if (activity  == 0 || activity == -1)
     {
